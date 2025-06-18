@@ -112,8 +112,7 @@ pub fn quantize_blocks_to_indices(src: &GrayImage) -> GrayImage {
         for bx_i in 0..bx {
             let first = src.get_pixel(bx_i * bw, by_i * bw)[0];
             // Force full range 0..=255 to map exactly into 0..=9
-            let idx = (first as u32 * 10) / 256;
-            //let idx = ((first as u32 * 10 + 255) / 256).min(9) as u8;
+            let idx = ((first as u32 * 10 + 255) / 256).min(9) as u8;
             idx_img.put_pixel(bx_i, by_i, Luma([idx as u8]));
         }
     }
@@ -147,16 +146,95 @@ pub fn replace_blocks_with_tiles(
     out
 }
 
-fn main() -> image::ImageResult<()> {
-    let img = open("in.jpg")?.to_rgba8();
-    let tiles = load_tiles("fillASCII.png").unwrap();
-    let mut img_px = pixelate(&img, 8);
-    desaturate_in_place(&mut img_px, 1.0);
-    let grey = image::imageops::grayscale(&img_px);
-    let qua = quantize_image(&grey);
-    let indices = quantize_blocks_to_indices(&qua);
-    let res = replace_blocks_with_tiles(&indices, &tiles);
+//pub fn sobel_filter(image: &DynamicImage) -> GrayImage {
+//    // Convert to grayscale
+//    let gray = image.to_luma8();
+//    let (width, height) = gray.dimensions();
+//    let mut output = GrayImage::new(width, height);
+//
+//    // Sobel kernels
+//    let gx_kernel: [[f32; 3]; 3] = [[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]];
+//    let gy_kernel: [[f32; 3]; 3] = [[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]];
+//
+//    // Theoretical maximum gradient magnitude for normalization
+//    let max_magnitude = 4.0 * 255.0 * 2.0_f32.sqrt();
+//    let scale = 255.0 / max_magnitude;
+//
+//    // Iterate over inner pixels (skip 1-pixel border)
+//    for y in 1..height - 1 {
+//        for x in 1..width - 1 {
+//            let mut gx = 0.0;
+//            let mut gy = 0.0;
+//
+//            // Convolve with kernels
+//            for ky in 0..3 {
+//                for kx in 0..3 {
+//                    let pixel = gray.get_pixel(x + kx - 1, y + ky - 1);
+//                    let val = pixel[0] as f32;
+//                    gx += val * gx_kernel[ky as usize][kx as usize];
+//                    gy += val * gy_kernel[ky as usize][kx as usize];
+//                }
+//            }
+//
+//            // Compute magnitude and scale to [0, 255]
+//            let magnitude = (gx.powi(2) + gy.powi(2)).sqrt();
+//            let magnitude = (magnitude * scale).min(255.0) as u8;
+//
+//            output.put_pixel(x, y, Luma([magnitude]));
+//        }
+//    }
+//
+//    output
+//}
 
-    res.save("result.png")?;
+fn _convert_to_rgba(gray: &GrayImage) -> RgbaImage {
+    RgbaImage::from_fn(gray.width(), gray.height(), |x, y| {
+        let pixel = gray.get_pixel(x, y);
+        let value = pixel.0[0];
+        Rgba([value, value, value, 255])
+    })
+}
+
+//fn compute_sobel_gradients(image: &GrayImage) -> (Vec<Vec<f32>>, Vec<Vec<f32>>) {
+//    let (width, height) = image.dimensions();
+//    let mut gx = vec![vec![0.0; width as usize]; height as usize];
+//    let mut gy = vec![vec![0.0; width as usize]; height as usize];
+//
+//    let kernel_x: [[f32; 3]; 3] = [[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]];
+//    let kernel_y: [[f32; 3]; 3] = [[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]];
+//
+//    for y in 1..height - 1 {
+//        for x in 1..width - 1 {
+//            let mut gx_val = 0.0;
+//            let mut gy_val = 0.0;
+//
+//            for ky in 0..3 {
+//                for kx in 0..3 {
+//                    let px = image.get_pixel(x + kx - 1, y + ky - 1);
+//                    let val = px[0] as f32;
+//                    gx_val += val * kernel_x[ky as usize][kx as usize];
+//                    gy_val += val * kernel_y[ky as usize][kx as usize];
+//                }
+//            }
+//
+//            gx[y as usize][x as usize] = gx_val;
+//            gy[y as usize][x as usize] = gy_val;
+//        }
+//    }
+//
+//    (gx, gy)
+//}
+
+fn main() -> image::ImageResult<()> {
+    let image_source = open("in.jpg")?.to_rgba8();
+    let filling_tiles = load_tiles("fillASCII.png").unwrap();
+    let mut image_downscaled = pixelate(&image_source, 8);
+    desaturate_in_place(&mut image_downscaled, 1.0);
+    let image_greyscaled = image::imageops::grayscale(&image_downscaled);
+    let image_quantized = quantize_image(&image_greyscaled);
+    let image_indices = quantize_blocks_to_indices(&image_quantized);
+    let result = replace_blocks_with_tiles(&image_indices, &filling_tiles);
+
+    result.save("result.png")?;
     Ok(())
 }
