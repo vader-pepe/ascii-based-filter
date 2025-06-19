@@ -1,6 +1,6 @@
 # Ascii-Based-Filter
 
-This program creates ASCII art from images by converting luminance to characters and edges to directional symbols. The current implementation replaces luminance values with ASCII characters (.,c,p,O), with edge detection and directional character replacement as a work-in-progress feature.
+This program creates ASCII art from images by converting luminance to characters and edges to directional symbols. The current implementation replaces luminance values with ASCII characters (.:`coPO?@█), with edge detection and directional character replacement as a work-in-progress feature.
 
 ## Features
 - Luminance to ASCII conversion: Replaces pixel brightness with ASCII characters
